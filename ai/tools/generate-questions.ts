@@ -7,7 +7,9 @@ import { QuestionSchema } from "../schemas";
 export const generateQuestionsTool = tool({
   description: "Generate multiple-choice quiz questions from all slide content",
   inputSchema: z.object({
-    slides: z.array(z.string()).describe("Array of slide content to generate questions from"),
+    slides: z
+      .array(z.string())
+      .describe("Array of slide content to generate questions from"),
   }),
   execute: async ({ slides }) => {
     const result = await generateObject({
@@ -17,7 +19,7 @@ export const generateQuestionsTool = tool({
       }),
       prompt: `Generate 15-20 multiple-choice quiz questions from this presentation content:
 
-${slides.map((slide, i) => `Slide ${i + 1}: ${slide}`).join('\n\n')}
+${slides.map((slide, i) => `Slide ${i + 1}: ${slide}`).join("\n\n")}
 
 Requirements:
 - Each question must have exactly 4 options

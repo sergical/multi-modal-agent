@@ -5,7 +5,9 @@ import { QuestionSchema } from "../schemas";
 export const dedupeQuestionsTool = tool({
   description: "Remove duplicate or similar questions from a list",
   inputSchema: z.object({
-    questions: z.array(QuestionSchema).describe("Array of questions to deduplicate"),
+    questions: z
+      .array(QuestionSchema)
+      .describe("Array of questions to deduplicate"),
   }),
   execute: async ({ questions }) => {
     const unique = [];
