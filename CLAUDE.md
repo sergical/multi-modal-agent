@@ -56,8 +56,31 @@ The chat system is built with:
 
 ### Key Components
 - **Chat Component** (`app/page.tsx:32`): Main chat interface handling user input and file uploads
-- **File Conversion** (`app/page.tsx:8`): Utility function converting FileList to data URLs for AI processing
-- **API Route** (`app/api/chat/route.ts:6`): Streaming chat endpoint with 30-second timeout
+- **File Conversion** (`app/page.tsx:55`): Utility function converting blob URLs to data URLs for AI processing
+- **API Route** (`app/api/chat/route.ts:7`): Streaming chat endpoint with tool calling support
+- **AI Tools** (`ai/tools/`): Modular quiz generation tools using AI SDK patterns
+
+### AI Tools Architecture
+The application includes AI-powered quiz generation tools:
+
+```
+ai/
+├── schemas.ts              # Shared Zod schemas (Question, Quiz types)
+├── index.ts                # Tool exports and quizTools collection
+└── tools/
+    ├── extract-slides.ts   # PDF slide extraction tool
+    ├── generate-questions.ts # Question generation from slides
+    ├── dedupe-questions.ts # Question deduplication logic
+    └── package-quiz.ts     # Final quiz packaging tool
+```
+
+**Tool Workflow for PDF Quiz Generation:**
+1. `extract_slides`: Extracts content from PDF slides
+2. `generate_questions`: Creates questions from each slide
+3. `dedupe_questions`: Removes similar/duplicate questions
+4. `package_quiz`: Packages final 10-question quiz
+
+All tools use the `tool` helper from AI SDK with Zod validation and are configured for multi-step execution with `stopWhen(stepCountIs(10))`.
 
 ## Development Notes
 
@@ -66,3 +89,4 @@ The chat system is built with:
 - Path alias `@/*` maps to project root
 - File uploads accept `image/*` and `application/pdf` MIME types
 - OpenAI model is configured as "gpt-5" (verify model availability)
+- AI tools are modular and can be imported individually or as `quizTools` collection
