@@ -5,21 +5,27 @@ import { z } from "zod";
 import { QuestionSchema } from "../schemas";
 
 export const generateQuestionsTool = tool({
-  description: "Generate multiple-choice quiz questions from slide content",
+  description: "Generate multiple-choice quiz questions from all slide content",
   inputSchema: z.object({
-    slide: z.string().describe("Slide content to generate questions from"),
+    slides: z.array(z.string()).describe("Array of slide content to generate questions from"),
   }),
-  execute: async ({ slide }) => {
+  execute: async ({ slides }) => {
     const result = await generateObject({
       model: openai("gpt-5-mini"),
       schema: z.object({
         questions: z.array(QuestionSchema.omit({ id: true })),
       }),
-      prompt: `Generate 2-3 multiple-choice quiz questions from this slide content: "${slide}"
+      prompt: `Generate 15-20 multiple-choice quiz questions from this presentation content:
 
-Each question must have exactly 4 options and test understanding of key concepts.
-Make sure one option is clearly correct and the others are plausible distractors.
-Vary difficulty levels (easy, medium, hard).`,
+${slides.map((slide, i) => `Slide ${i + 1}: ${slide}`).join('\n\n')}
+
+Requirements:
+- Each question must have exactly 4 options
+- Test understanding of key concepts across all slides
+- One option should be clearly correct, others should be plausible distractors
+- Vary difficulty levels (easy, medium, hard)
+- Cover different slides but focus on the most important concepts
+- Generate more questions than needed so deduplication can select the best ones`,
     });
 
     // Add IDs to each question

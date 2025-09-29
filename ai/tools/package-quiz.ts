@@ -12,7 +12,6 @@ export const packageQuizTool = tool({
       .describe("Array of questions to package into quiz"),
   }),
   execute: async ({ questions }) => {
-    // Select up to 10 questions with some variety in difficulty
     const selectedQuestions = selectQuestions(questions, 10);
 
     const quiz = {

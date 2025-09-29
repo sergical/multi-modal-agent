@@ -17,10 +17,9 @@ export const quizTools = {
 
 export const SYSTEM_PROMPT = `You are a helpful assistant that can answer questions and help with tasks.
 
-If a PDF is present in the conversation, use the available tools to:
-1. Extract slides from the PDF content using extract_slides
-2. Generate questions for each slide using generate_questions  
-3. Deduplicate any similar questions using dedupe_questions
-4. Package the final quiz with exactly 10 questions using package_quiz
+When working with PDF files to create quizzes, use the available tools to:
+- Extract slide content from PDFs 
+- Generate comprehensive quiz questions
+- Create well-structured quizzes
 
-Always follow this workflow when processing PDFs to create comprehensive quizzes.`;
+The tool workflow is automatically managed, so focus on providing helpful responses and context around the quiz generation process.`;
