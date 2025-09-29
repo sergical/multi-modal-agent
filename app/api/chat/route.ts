@@ -1,4 +1,5 @@
 import { openai } from "@ai-sdk/openai";
+import * as Sentry from "@sentry/nextjs";
 import {
   convertToModelMessages,
   stepCountIs,
@@ -23,8 +24,23 @@ export async function POST(req: Request) {
     ),
   );
 
+  const hasMoreThanOneUserMessages =
+    messages.filter((msg) => msg.role === "user").length > 1;
+
+  console.log("chat request received", { hasPDF, hasMoreThanOneUserMessages });
+
+  if (hasPDF) {
+    Sentry.logger.info("starting quiz generation workflow");
+  }
+
   const result = streamText({
     model: openai("gpt-4o"),
+    experimental_telemetry: {
+      isEnabled: true,
+      recordInputs: true,
+      recordOutputs: true,
+      functionId: "chat",
+    },
     messages: convertToModelMessages(messages),
     system: SYSTEM_PROMPT,
     tools: quizTools,
@@ -42,7 +58,9 @@ export async function POST(req: Request) {
       // Step 0: If no tools called yet, force extract_slides
       if (
         stepNumber === 0 ||
-        (!calledTools.has("extract_slides") && stepNumber < 5)
+        (!calledTools.has("extract_slides") &&
+          stepNumber < 5 &&
+          !hasMoreThanOneUserMessages)
       ) {
         return {
           toolChoice: { type: "tool" as const, toolName: "extract_slides" },

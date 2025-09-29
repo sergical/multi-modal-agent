@@ -3,6 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import { CopyIcon, RefreshCcwIcon } from "lucide-react";
 import { Fragment, useState } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { Action, Actions } from "@/components/ai-elements/actions";
 import {
   Conversation,
@@ -57,6 +58,24 @@ const ChatBotDemo = () => {
       return;
     }
 
+    // Log file attachments with sizes
+    if (hasAttachments) {
+      const fileCount = message.files?.length || 0;
+      const fileInfos = await Promise.all(
+        message.files?.map(async (f) => {
+          try {
+            const response = await fetch(f.url);
+            const blob = await response.blob();
+            const sizeMB = (blob.size / 1024 / 1024).toFixed(1);
+            return `${f.type} (${sizeMB}MB)`;
+          } catch {
+            return f.type;
+          }
+        }) || []
+      );
+      Sentry.logger.info(Sentry.logger.fmt`user uploaded ${fileCount} file${fileCount === 1 ? '' : 's'}: ${fileInfos.join(', ')}`);
+    }
+
     // Convert blob URLs to data URLs for server processing
     let processedFiles = message.files;
     if (message.files?.length) {
@@ -75,6 +94,7 @@ const ChatBotDemo = () => {
               return { ...file, url: dataUrl };
             } catch (error) {
               console.error("Failed to convert blob URL to data URL:", error);
+              Sentry.logger.error(Sentry.logger.fmt`failed to convert blob URL for file: ${file.type}`);
               return file;
             }
           }
@@ -83,6 +103,8 @@ const ChatBotDemo = () => {
       );
     }
 
+    Sentry.logger.info(Sentry.logger.fmt`sending message${hasAttachments ? ' with files' : ''}`);
+    
     sendMessage({
       text: message.text || "Sent with attachments",
       files: processedFiles,

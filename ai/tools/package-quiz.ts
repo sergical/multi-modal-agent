@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { QuestionSchema } from "../schemas";
+import * as Sentry from "@sentry/nextjs";
 
 export const packageQuizTool = tool({
   description:
@@ -22,6 +23,8 @@ export const packageQuizTool = tool({
       totalQuestions: selectedQuestions.length,
       estimatedTime: `${Math.ceil(selectedQuestions.length * 1.5)} minutes`,
     };
+
+    Sentry.logger.info(Sentry.logger.fmt`packaging quiz (${selectedQuestions.length} Qs)`);
 
     return { quiz };
   },

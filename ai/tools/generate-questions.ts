@@ -3,6 +3,7 @@ import { generateObject, tool } from "ai";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { QuestionSchema } from "../schemas";
+import * as Sentry from "@sentry/nextjs";
 
 export const generateQuestionsTool = tool({
   description: "Generate multiple-choice quiz questions from all slide content",
@@ -12,8 +13,16 @@ export const generateQuestionsTool = tool({
       .describe("Array of slide content to generate questions from"),
   }),
   execute: async ({ slides }) => {
+    const slideCount = slides.length;
+    
     const result = await generateObject({
       model: openai("gpt-5-mini"),
+      experimental_telemetry: {
+        isEnabled: true,
+        recordInputs: true,
+        recordOutputs: true,
+        functionId: "generate_questions",
+      },
       schema: z.object({
         questions: z.array(QuestionSchema.omit({ id: true })),
       }),
@@ -35,6 +44,9 @@ Requirements:
       ...q,
       id: nanoid(),
     }));
+
+    const questionCount = questions.length;
+    Sentry.logger.info(Sentry.logger.fmt`called generate_questions (${slideCount} slides) → ${questionCount} Qs`);
 
     return { questions };
   },

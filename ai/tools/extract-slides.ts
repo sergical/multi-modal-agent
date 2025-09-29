@@ -1,12 +1,15 @@
 import { openai } from "@ai-sdk/openai";
 import { generateObject, tool } from "ai";
 import { z } from "zod";
+import * as Sentry from "@sentry/nextjs";
 
 export const extractSlidesTool = tool({
   description:
     "Extract slide content from PDF that was uploaded in the conversation",
   inputSchema: z.object({}),
   execute: async (_, { messages }) => {
+    const startTime = Date.now();
+
     // Find the PDF file in the conversation messages
     let pdfFile: any = null;
 
@@ -28,7 +31,13 @@ export const extractSlidesTool = tool({
 
     // Use structured output to get reliable JSON
     const result = await generateObject({
-      model: openai("gpt-4o"),
+      model: openai("gpt-5-mini"),
+      experimental_telemetry: {
+        isEnabled: true,
+        recordInputs: true,
+        recordOutputs: true,
+        functionId: "extract_slides",
+      },
       schema: z.object({
         slides: z.array(z.string()).describe("Array of slide content strings"),
       }),
@@ -54,6 +63,11 @@ export const extractSlidesTool = tool({
         },
       ],
     });
+
+    const duration = Date.now() - startTime;
+    const slideCount = result.object.slides.length;
+    
+    Sentry.logger.info(Sentry.logger.fmt`called extract_slides (${slideCount} pages) in ${duration}ms`);
 
     return { slides: result.object.slides };
   },
