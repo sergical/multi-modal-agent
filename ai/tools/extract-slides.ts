@@ -1,7 +1,7 @@
 import { openai } from "@ai-sdk/openai";
+import * as Sentry from "@sentry/nextjs";
 import { generateObject, tool } from "ai";
 import { z } from "zod";
-import * as Sentry from "@sentry/nextjs";
 
 export const extractSlidesTool = tool({
   description:
@@ -66,8 +66,11 @@ export const extractSlidesTool = tool({
 
     const duration = Date.now() - startTime;
     const slideCount = result.object.slides.length;
-    
-    Sentry.logger.info(Sentry.logger.fmt`called extract_slides (${slideCount} pages) in ${duration}ms`);
+
+    Sentry.logger.info(
+      Sentry.logger
+        .fmt`called extract_slides (${slideCount} pages) in ${duration}ms`,
+    );
 
     return { slides: result.object.slides };
   },
