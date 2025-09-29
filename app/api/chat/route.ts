@@ -8,8 +8,6 @@ export async function POST(req: Request) {
     messages,
   }: {
     messages: UIMessage[];
-    model: string;
-    webSearch: boolean;
   } = await req.json();
 
   const result = streamText({
