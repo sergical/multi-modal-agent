@@ -1,9 +1,9 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { CopyIcon, RefreshCcwIcon } from "lucide-react";
 import { Fragment, useState } from "react";
-import * as Sentry from "@sentry/nextjs";
 import { Action, Actions } from "@/components/ai-elements/actions";
 import {
   Conversation,
@@ -14,12 +14,6 @@ import { Loader } from "@/components/ai-elements/loader";
 import { Message, MessageContent } from "@/components/ai-elements/message";
 import {
   PromptInput,
-  PromptInputActionAddAttachments,
-  PromptInputActionMenu,
-  PromptInputActionMenuContent,
-  PromptInputActionMenuTrigger,
-  PromptInputAttachment,
-  PromptInputAttachments,
   PromptInputBody,
   type PromptInputMessage,
   PromptInputSubmit,
@@ -27,13 +21,6 @@ import {
   PromptInputToolbar,
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
-
-import {
-  Reasoning,
-  ReasoningContent,
-  ReasoningTrigger,
-} from "@/components/ai-elements/reasoning";
-
 import { Response } from "@/components/ai-elements/response";
 import {
   Tool,
@@ -43,79 +30,36 @@ import {
   ToolOutput,
 } from "@/components/ai-elements/tool";
 
-const ChatBotDemo = () => {
-  const [input, setInput] = useState(
-    "create a 10 question quiz for this presentation",
-  );
+const DayPlanner = () => {
+  const [input, setInput] = useState("");
 
-  const { messages, sendMessage, status, regenerate } = useChat();
+  const { messages, sendMessage, status, regenerate } = useChat({
+    transport: new DefaultChatTransport({
+      api: "/api/step-0-broken",
+    }),
+  });
 
   const handleSubmit = async (message: PromptInputMessage) => {
-    const hasText = Boolean(message.text);
-    const hasAttachments = Boolean(message.files?.length);
-
-    if (!(hasText || hasAttachments)) {
-      return;
-    }
-
-    // Log file attachments with sizes
-    if (hasAttachments) {
-      const fileCount = message.files?.length || 0;
-      const fileInfos = await Promise.all(
-        message.files?.map(async (f) => {
-          try {
-            const response = await fetch(f.url);
-            const blob = await response.blob();
-            const sizeMB = (blob.size / 1024 / 1024).toFixed(1);
-            return `${f.type} (${sizeMB}MB)`;
-          } catch {
-            return f.type;
-          }
-        }) || []
-      );
-      Sentry.logger.info(Sentry.logger.fmt`user uploaded ${fileCount} file${fileCount === 1 ? '' : 's'}: ${fileInfos.join(', ')}`);
-    }
-
-    // Convert blob URLs to data URLs for server processing
-    let processedFiles = message.files;
-    if (message.files?.length) {
-      processedFiles = await Promise.all(
-        message.files.map(async (file) => {
-          if (file.url.startsWith("blob:")) {
-            try {
-              const response = await fetch(file.url);
-              const blob = await response.blob();
-              const reader = new FileReader();
-              const dataUrl = await new Promise<string>((resolve, reject) => {
-                reader.onload = () => resolve(reader.result as string);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-              });
-              return { ...file, url: dataUrl };
-            } catch (error) {
-              console.error("Failed to convert blob URL to data URL:", error);
-              Sentry.logger.error(Sentry.logger.fmt`failed to convert blob URL for file: ${file.type}`);
-              return file;
-            }
-          }
-          return file;
-        }),
-      );
-    }
-
-    Sentry.logger.info(Sentry.logger.fmt`sending message${hasAttachments ? ' with files' : ''}`);
-    
-    sendMessage({
-      text: message.text || "Sent with attachments",
-      files: processedFiles,
-    });
+    if (!message.text) return;
+    sendMessage({ text: message.text });
     setInput("");
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 relative size-full h-screen">
-      <div className="flex flex-col h-full">
-        <Conversation className="h-full">
+    <div className="mx-auto flex h-screen max-w-3xl flex-col">
+      {/* Minimal Hero */}
+      <div className="border-b bg-background px-6 py-6">
+        <div className="space-y-0.5">
+          <h1 className="font-semibold text-xl tracking-tight">Day Planner</h1>
+          <p className="text-muted-foreground text-xs">
+            Your personal assistant for weather and location information
+          </p>
+        </div>
+      </div>
+
+      {/* Chat Interface */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <Conversation className="flex-1">
           <ConversationContent>
             {messages.map((message) => (
               <div key={message.id}>
@@ -130,7 +74,7 @@ const ChatBotDemo = () => {
                             </MessageContent>
                           </Message>
                           {message.role === "assistant" &&
-                            i === messages.length - 1 && (
+                            i === message.parts.length - 1 && (
                               <Actions className="mt-2">
                                 <Action
                                   onClick={() => regenerate()}
@@ -151,26 +95,8 @@ const ChatBotDemo = () => {
                         </Fragment>
                       );
 
-                    case "reasoning":
-                      return (
-                        <Reasoning
-                          key={`${message.id}-${i}`}
-                          className="w-full"
-                          isStreaming={
-                            status === "streaming" &&
-                            i === message.parts.length - 1 &&
-                            message.id === messages.at(-1)?.id
-                          }
-                        >
-                          <ReasoningTrigger />
-                          <ReasoningContent>{part.text}</ReasoningContent>
-                        </Reasoning>
-                      );
-
-                    case "tool-extract_slides":
-                    case "tool-generate_questions":
-                    case "tool-dedupe_questions":
-                    case "tool-package_quiz":
+                    case "tool-weather":
+                    case "tool-location":
                       return (
                         <Tool
                           key={`${message.id}-${i}`}
@@ -197,40 +123,60 @@ const ChatBotDemo = () => {
               </div>
             ))}
             {status === "submitted" && <Loader />}
+
+            {messages.length === 0 && (
+              <div className="flex h-full items-center justify-center px-6">
+                <div className="w-full max-w-md space-y-6">
+                  <div className="space-y-1 text-center">
+                    <p className="text-muted-foreground text-sm">
+                      Ask me about weather or locations to help plan your day
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setInput("What's the weather in San Francisco?");
+                      }}
+                      className="rounded-lg border bg-background px-4 py-2.5 text-left text-muted-foreground text-sm transition-colors hover:bg-accent hover:text-foreground"
+                    >
+                      What's the weather in San Francisco?
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setInput("What timezone is New York in?");
+                      }}
+                      className="rounded-lg border bg-background px-4 py-2.5 text-left text-muted-foreground text-sm transition-colors hover:bg-accent hover:text-foreground"
+                    >
+                      What timezone is New York in?
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
 
-        <PromptInput
-          onSubmit={handleSubmit}
-          className="mt-4"
-          globalDrop
-          multiple
-        >
-          <PromptInputBody>
-            <PromptInputAttachments>
-              {(attachment) => <PromptInputAttachment data={attachment} />}
-            </PromptInputAttachments>
-            <PromptInputTextarea
-              onChange={(e) => setInput(e.target.value)}
-              value={input}
-            />
-          </PromptInputBody>
-          <PromptInputToolbar>
-            <PromptInputTools>
-              <PromptInputActionMenu>
-                <PromptInputActionMenuTrigger />
-                <PromptInputActionMenuContent>
-                  <PromptInputActionAddAttachments />
-                </PromptInputActionMenuContent>
-              </PromptInputActionMenu>
-            </PromptInputTools>
-            <PromptInputSubmit disabled={!input && !status} status={status} />
-          </PromptInputToolbar>
-        </PromptInput>
+        <div className="border-t bg-background p-4">
+          <PromptInput onSubmit={handleSubmit}>
+            <PromptInputBody>
+              <PromptInputTextarea
+                onChange={(e) => setInput(e.target.value)}
+                value={input}
+                placeholder="Ask about weather or location..."
+              />
+            </PromptInputBody>
+            <PromptInputToolbar>
+              <PromptInputTools />
+              <PromptInputSubmit disabled={!input} status={status} />
+            </PromptInputToolbar>
+          </PromptInput>
+        </div>
       </div>
     </div>
   );
 };
 
-export default ChatBotDemo;
+export default DayPlanner;
